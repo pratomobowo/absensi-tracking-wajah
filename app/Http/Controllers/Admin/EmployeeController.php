@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Jobs\ProcessEmployeeFaceData;
 
 class EmployeeController extends Controller
 {
@@ -183,6 +184,97 @@ class EmployeeController extends Controller
                 'success' => false,
                 'message' => 'Error processing face data: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+    
+    /**
+     * Handle bulk upload of employee photos and register face data
+     */
+    public function bulkUpload(Request $request)
+    {
+        $request->validate([
+            'employee_photos.*' => 'required|image|max:5120', // Max 5MB per image
+            'update_existing' => 'nullable|boolean',
+        ]);
+        
+        // Check if any files were uploaded
+        if (!$request->hasFile('employee_photos')) {
+            return redirect()->route('admin.employees.index')
+                ->with('error', 'No files were uploaded.');
+        }
+        
+        $updateExisting = $request->has('update_existing');
+        $successCount = 0;
+        $errorCount = 0;
+        $errors = [];
+        
+        // Load face-api models (outside the loop to avoid loading multiple times)
+        
+        // Process each uploaded photo
+        foreach ($request->file('employee_photos') as $photo) {
+            try {
+                // Parse employee ID from filename (format: EMP001_name.jpg)
+                $filenameWithoutExt = pathinfo($photo->getClientOriginalName(), PATHINFO_FILENAME);
+                $parts = explode('_', $filenameWithoutExt);
+                
+                if (empty($parts[0])) {
+                    $errors[] = "Invalid filename format for {$photo->getClientOriginalName()}. Expected format: employeeID_name.jpg";
+                    $errorCount++;
+                    continue;
+                }
+                
+                $employeeId = $parts[0];
+                
+                // Find the employee by ID
+                $employee = Employee::where('employee_id', $employeeId)->first();
+                
+                if (!$employee) {
+                    $errors[] = "No employee found with ID: {$employeeId} for file {$photo->getClientOriginalName()}";
+                    $errorCount++;
+                    continue;
+                }
+                
+                // Skip if employee already has face data and update_existing is false
+                if ($employee->face_data && !$updateExisting) {
+                    $errors[] = "Employee {$employee->name} already has face data. Skipped.";
+                    $errorCount++;
+                    continue;
+                }
+                
+                // Store the photo
+                $path = $photo->store('employee_faces', 'public');
+                
+                // Create a path that can be loaded by face-api.js
+                $photoUrl = Storage::url($path);
+                $photoPath = public_path(str_replace('/storage', 'storage', $photoUrl));
+                
+                // Process the image with face-api.js through a job
+                ProcessEmployeeFaceData::dispatch($employee, $photoPath);
+                
+                $successCount++;
+                
+            } catch (\Exception $e) {
+                \Log::error('Bulk upload error: ' . $e->getMessage());
+                $errors[] = "Error processing {$photo->getClientOriginalName()}: {$e->getMessage()}";
+                $errorCount++;
+            }
+        }
+        
+        // Prepare session message
+        $sessionData = [
+            'success_count' => $successCount,
+            'error_count' => $errorCount,
+            'errors' => $errors
+        ];
+        
+        if ($successCount > 0) {
+            return redirect()->route('admin.employees.index')
+                ->with('bulk_upload_result', $sessionData)
+                ->with('success', "{$successCount} photos uploaded successfully. {$errorCount} failed.");
+        } else {
+            return redirect()->route('admin.employees.index')
+                ->with('bulk_upload_result', $sessionData)
+                ->with('error', "Failed to process any photos. Please check the errors and try again.");
         }
     }
 }

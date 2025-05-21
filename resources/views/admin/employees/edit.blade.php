@@ -149,6 +149,15 @@
                                 </svg>
                                 Capture Face Data
                             </button>
+                            
+                            @if($employee->photo)
+                            <button type="button" id="use-existing-photo" class="ml-2 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                </svg>
+                                Use Existing Photo
+                            </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -217,6 +226,9 @@
         const overlay = document.getElementById('face-overlay');
         const captureStatus = document.getElementById('capture-status');
         
+        // Use existing photo button
+        const useExistingPhotoBtn = document.getElementById('use-existing-photo');
+        
         let currentStream = null;
         let isModelLoaded = false;
         let faceDetectionInterval = null;
@@ -226,6 +238,142 @@
         closeFaceModal.addEventListener('click', closeFaceCaptureModal);
         cancelCapture.addEventListener('click', closeFaceCaptureModal);
         captureBtn.addEventListener('click', captureFace);
+        
+        // Add event listener for using existing photo
+        if (useExistingPhotoBtn) {
+            useExistingPhotoBtn.addEventListener('click', useExistingPhoto);
+        }
+        
+        // Function to use the existing employee photo for face recognition
+        async function useExistingPhoto() {
+            // Show loading state
+            useExistingPhotoBtn.disabled = true;
+            useExistingPhotoBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+            `;
+            
+            try {
+                // Load required face-api models
+                if (!isModelLoaded) {
+                    if (window.faceApiInit && typeof window.faceApiInit === 'function') {
+                        await window.faceApiInit();
+                    } else {
+                        await faceapi.loadSsdMobilenetv1Model('/models');
+                        await faceapi.loadFaceLandmarkModel('/models');
+                        await faceapi.loadFaceRecognitionNet('/models');
+                    }
+                    isModelLoaded = true;
+                }
+                
+                // Get the employee photo URL
+                const photoUrl = "{{ $employee->photo ? Storage::url($employee->photo) : '' }}";
+                
+                if (!photoUrl) {
+                    throw new Error('No photo available for this employee');
+                }
+                
+                // Create an image element to load the photo
+                const img = new Image();
+                img.crossOrigin = "anonymous"; // Enable CORS to avoid tainted canvas
+                
+                // Wait for the image to load
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = photoUrl;
+                });
+                
+                // Detect face in the photo
+                const detections = await faceapi.detectAllFaces(
+                    img, 
+                    new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
+                )
+                .withFaceLandmarks()
+                .withFaceDescriptors();
+                
+                if (detections.length === 0) {
+                    throw new Error('No face detected in the existing photo. Please try using camera capture instead.');
+                }
+                
+                if (detections.length > 1) {
+                    throw new Error('Multiple faces detected in the photo. Please use a photo with only one face or use camera capture.');
+                }
+                
+                // Create a canvas for the photo
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                
+                const faceImage = canvas.toDataURL('image/jpeg');
+                
+                // Get face descriptor for identification
+                const faceDetection = detections[0];
+                const simplifiedData = {
+                    detection: {
+                        box: faceDetection.detection.box,
+                        score: faceDetection.detection.score
+                    },
+                    landmarks: {
+                        positions: faceDetection.landmarks.positions.map(p => ({ x: p.x, y: p.y }))
+                    },
+                    descriptor: Array.from(faceDetection.descriptor)
+                };
+                
+                // Send data to server
+                const response = await fetch(`/admin/employees/{{ $employee->id }}/capture-face`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        face_photo: faceImage,
+                        face_data: JSON.stringify(simplifiedData)
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Server responded with status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Face data registered successfully from existing photo!');
+                    
+                    // If updating existing data, add note about attendance system
+                    if ("{{ $employee->face_data }}" !== "") {
+                        alert('Note: You have updated face data for this employee. If you previously had issues with face recognition, make sure to try the attendance system again with the new face data.');
+                    }
+                    
+                    // Reload page to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error('Failed to register face data: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error processing existing photo:', error);
+                alert(error.message || 'Error processing existing photo. Please try again or use camera capture.');
+                
+                // Reset button
+                useExistingPhotoBtn.disabled = false;
+                useExistingPhotoBtn.innerHTML = `
+                    <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                    </svg>
+                    Use Existing Photo
+                `;
+            }
+        }
         
         // Initialize face detection
         async function initFaceDetection() {

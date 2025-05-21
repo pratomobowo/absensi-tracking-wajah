@@ -72,6 +72,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Capture face data endpoint
         Route::post('/employees/{employee}/capture-face', [EmployeeController::class, 'captureFace'])->name('employees.capture-face');
         
+        // Bulk upload endpoint
+        Route::post('/employees-bulk-upload', [EmployeeController::class, 'bulkUpload'])->name('employees.bulk-upload');
+        
         // Department management
         Route::resource('departments', DepartmentController::class);
         

@@ -12,12 +12,20 @@
                 <h2 class="text-xl font-bold text-gray-800">Employees</h2>
                 <p class="text-sm text-gray-600">Manage all employees in your organization</p>
             </div>
-            <a href="{{ route('admin.employees.create') }}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-                Add Employee
-            </a>
+            <div class="flex space-x-2">
+                <a href="{{ route('admin.employees.create') }}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Add Employee
+                </a>
+                <button id="open-bulk-upload-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    Bulk Upload Photos
+                </button>
+            </div>
         </div>
         
         <div class="overflow-x-auto">
@@ -128,4 +136,116 @@
         </div>
     </div>
 </div>
+
+<!-- Bulk Upload Modal -->
+<div id="bulk-upload-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">Bulk Upload Employee Photos</h3>
+                <button type="button" id="close-bulk-modal" class="text-gray-400 hover:text-gray-500">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="text-sm text-gray-500 mb-4">
+                <p>Upload multiple employee photos at once. The system will automatically attempt to detect faces and register face data for recognition.</p>
+                <div class="mt-2 bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                    <p><strong>Important notes:</strong></p>
+                    <ul class="list-disc ml-4 mt-1">
+                        <li>Each photo filename must follow format: <strong>employeeID_name.jpg</strong> (e.g., EMP001_john_doe.jpg)</li>
+                        <li>Only JPG/JPEG/PNG files are allowed</li>
+                        <li>Each photo should contain only one face clearly visible</li>
+                        <li>Employees must already exist in the system with the correct employee ID</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <form id="bulk-upload-form" action="{{ route('admin.employees.bulk-upload') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+                <div class="mt-2">
+                    <label for="employee_photos" class="block text-sm font-medium text-gray-700 mb-1">Select Photos</label>
+                    <input type="file" id="employee_photos" name="employee_photos[]" multiple accept=".jpg,.jpeg,.png" 
+                        class="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring-blue-500" required>
+                </div>
+                
+                <div class="mt-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="update_existing" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-gray-700">Update existing face data (if already registered)</span>
+                    </label>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" id="cancel-bulk-upload" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Upload Photos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Bulk upload modal elements
+        const bulkUploadModal = document.getElementById('bulk-upload-modal');
+        const openBulkUploadBtn = document.getElementById('open-bulk-upload-btn');
+        const closeBulkModal = document.getElementById('close-bulk-modal');
+        const cancelBulkUpload = document.getElementById('cancel-bulk-upload');
+        
+        // Event listeners for modal
+        if (openBulkUploadBtn) {
+            openBulkUploadBtn.addEventListener('click', function() {
+                bulkUploadModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeBulkModal) {
+            closeBulkModal.addEventListener('click', function() {
+                bulkUploadModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelBulkUpload) {
+            cancelBulkUpload.addEventListener('click', function() {
+                bulkUploadModal.classList.add('hidden');
+            });
+        }
+        
+        // Preview selected images (optional)
+        const employeePhotosInput = document.getElementById('employee_photos');
+        
+        if (employeePhotosInput) {
+            employeePhotosInput.addEventListener('change', function() {
+                const fileCount = this.files.length;
+                const bulkUploadForm = document.getElementById('bulk-upload-form');
+                
+                if (fileCount > 0) {
+                    const countInfo = document.createElement('div');
+                    countInfo.className = 'mt-2 text-sm text-gray-600';
+                    countInfo.textContent = `${fileCount} file(s) selected`;
+                    
+                    // Remove any previous count info
+                    const existingInfo = bulkUploadForm.querySelector('.mt-2.text-sm.text-gray-600');
+                    if (existingInfo) {
+                        existingInfo.remove();
+                    }
+                    
+                    // Insert after file input
+                    employeePhotosInput.parentNode.appendChild(countInfo);
+                }
+            });
+        }
+    });
+</script>
 @endsection 
