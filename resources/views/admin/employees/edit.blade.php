@@ -82,6 +82,39 @@
                     </div>
                     
                     <div class="mb-4">
+                        <label for="status_id" class="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
+                        <select id="status_id" name="status_id" 
+                            class="w-full border-gray-300 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select Status</option>
+                            @foreach($statuses as $status)
+                                <option value="{{ $status->id }}" {{ old('status_id', $employee->status_id) == $status->id ? 'selected' : '' }}
+                                        style="color: {{ $status->color }};">
+                                    {{ $status->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('status_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="grade_id" class="block text-sm font-medium text-gray-700 mb-1">Employee Grade</label>
+                        <select id="grade_id" name="grade_id" 
+                            class="w-full border-gray-300 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">Select Grade</option>
+                            @foreach($grades as $grade)
+                                <option value="{{ $grade->id }}" {{ old('grade_id', $employee->grade_id) == $grade->id ? 'selected' : '' }}>
+                                    {{ $grade->name }} {{ $grade->code ? '('.$grade->code.')' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('grade_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
+                    <div class="mb-4">
                         <label for="joined_at" class="block text-sm font-medium text-gray-700 mb-1">Joined Date</label>
                         <input type="date" id="joined_at" name="joined_at" value="{{ old('joined_at', $employee->joined_at ? $employee->joined_at->format('Y-m-d') : '') }}" 
                             class="w-full border-gray-300 rounded-md shadow-sm p-2 focus:border-blue-500 focus:ring-blue-500">

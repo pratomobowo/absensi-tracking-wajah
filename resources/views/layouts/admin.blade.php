@@ -53,6 +53,25 @@
                                 </li>
                             </ul>
                         </li>
+                        
+                        <!-- HR Management Section -->
+                        <li class="mt-6">
+                            <h3 class="px-4 text-xs font-semibold text-blue-300 uppercase tracking-wider">
+                                HR Management
+                            </h3>
+                            <ul class="mt-2 space-y-1">
+                                <li>
+                                    <a href="{{ route('admin.employee-statuses.index') }}" class="block py-2 px-4 rounded transition duration-200 {{ Route::is('admin.employee-statuses.*') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                                        <span class="ml-2">Employee Statuses</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('admin.employee-grades.index') }}" class="block py-2 px-4 rounded transition duration-200 {{ Route::is('admin.employee-grades.*') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                                        <span class="ml-2">Employee Grades</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
                     </ul>
                 </nav>
             </div>
@@ -148,6 +167,25 @@
                             <li>
                                 <a href="{{ route('admin.reports.monthly') }}" class="block py-1.5 px-4 rounded transition duration-200 {{ Route::is('admin.reports.monthly') ? 'bg-blue-600' : 'hover:bg-blue-600' }}">
                                     <span class="ml-2">Monthly Report</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- HR Management Section for Mobile -->
+                    <li class="mt-6">
+                        <h3 class="px-4 text-xs font-semibold text-blue-300 uppercase tracking-wider">
+                            HR Management
+                        </h3>
+                        <ul class="mt-2 space-y-1">
+                            <li>
+                                <a href="{{ route('admin.employee-statuses.index') }}" class="block py-2 px-4 rounded transition duration-200 {{ Route::is('admin.employee-statuses.*') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                                    <span class="ml-2">Employee Statuses</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('admin.employee-grades.index') }}" class="block py-2 px-4 rounded transition duration-200 {{ Route::is('admin.employee-grades.*') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                                    <span class="ml-2">Employee Grades</span>
                                 </a>
                             </li>
                         </ul>

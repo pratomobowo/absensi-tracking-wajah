@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\EmployeeStatus;
+use App\Models\EmployeeGrade;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Jobs\ProcessEmployeeFaceData;
@@ -16,7 +18,7 @@ class EmployeeController extends Controller
      */
     public function index()
     {
-        $employees = Employee::with('department')->latest()->paginate(10);
+        $employees = Employee::with(['department', 'status', 'grade'])->latest()->paginate(10);
         return view('admin.employees.index', compact('employees'));
     }
     
@@ -26,7 +28,10 @@ class EmployeeController extends Controller
     public function create()
     {
         $departments = Department::all();
-        return view('admin.employees.create', compact('departments'));
+        $statuses = EmployeeStatus::where('is_active', true)->get();
+        $grades = EmployeeGrade::where('is_active', true)->orderBy('level')->get();
+        
+        return view('admin.employees.create', compact('departments', 'statuses', 'grades'));
     }
     
     /**
@@ -41,8 +46,26 @@ class EmployeeController extends Controller
             'phone' => 'required',
             'position' => 'required',
             'department_id' => 'required|exists:departments,id',
+            'status_id' => 'nullable|exists:employee_statuses,id',
+            'grade_id' => 'nullable|exists:employee_grades,id',
+            'nik' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'gender' => 'nullable|in:male,female,other',
+            'birth_place' => 'nullable|string',
+            'address' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
             'joined_at' => 'required|date',
+            'contract_start_date' => 'nullable|date',
+            'contract_end_date' => 'nullable|date|after_or_equal:contract_start_date',
+            'salary' => 'nullable|numeric|min:0',
+            'bank_name' => 'nullable|string',
+            'bank_account_number' => 'nullable|string',
+            'emergency_contact_name' => 'nullable|string',
+            'emergency_contact_phone' => 'nullable|string',
+            'emergency_contact_relationship' => 'nullable|string',
+            'education_background' => 'nullable|string',
+            'skills' => 'nullable|string',
+            'notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
         
@@ -64,6 +87,10 @@ class EmployeeController extends Controller
      */
     public function show(Employee $employee)
     {
+        $employee->load(['department', 'status', 'grade', 'attendances' => function($query) {
+            $query->latest()->take(10);
+        }]);
+        
         return view('admin.employees.show', compact('employee'));
     }
     
@@ -73,7 +100,10 @@ class EmployeeController extends Controller
     public function edit(Employee $employee)
     {
         $departments = Department::all();
-        return view('admin.employees.edit', compact('employee', 'departments'));
+        $statuses = EmployeeStatus::where('is_active', true)->get();
+        $grades = EmployeeGrade::where('is_active', true)->orderBy('level')->get();
+        
+        return view('admin.employees.edit', compact('employee', 'departments', 'statuses', 'grades'));
     }
     
     /**
@@ -88,8 +118,26 @@ class EmployeeController extends Controller
             'phone' => 'required',
             'position' => 'required',
             'department_id' => 'required|exists:departments,id',
+            'status_id' => 'nullable|exists:employee_statuses,id',
+            'grade_id' => 'nullable|exists:employee_grades,id',
+            'nik' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'gender' => 'nullable|in:male,female,other',
+            'birth_place' => 'nullable|string',
+            'address' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
             'joined_at' => 'required|date',
+            'contract_start_date' => 'nullable|date',
+            'contract_end_date' => 'nullable|date|after_or_equal:contract_start_date',
+            'salary' => 'nullable|numeric|min:0',
+            'bank_name' => 'nullable|string',
+            'bank_account_number' => 'nullable|string',
+            'emergency_contact_name' => 'nullable|string',
+            'emergency_contact_phone' => 'nullable|string',
+            'emergency_contact_relationship' => 'nullable|string',
+            'education_background' => 'nullable|string',
+            'skills' => 'nullable|string',
+            'notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
         
