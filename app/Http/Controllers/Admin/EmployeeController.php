@@ -154,6 +154,11 @@ class EmployeeController extends Controller
                     'timestamp' => time()
                 ];
                 
+                // Store face descriptor if available
+                if (isset($faceData['descriptor'])) {
+                    $simplifiedData['descriptor'] = $faceData['descriptor'];
+                }
+                
                 // Update employee face data
                 $employee->update([
                     'face_data' => json_encode($simplifiedData),

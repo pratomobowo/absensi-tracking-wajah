@@ -344,7 +344,9 @@
                 const detections = await faceapi.detectAllFaces(
                     video, 
                     new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
-                ).withFaceLandmarks();
+                )
+                .withFaceLandmarks()
+                .withFaceDescriptors();
                 
                 if (detections.length === 0) {
                     alert('No face detected. Please look directly at the camera.');
@@ -359,7 +361,7 @@
                 
                 const faceImage = canvas.toDataURL('image/jpeg');
                 
-                // Get face descriptor for identification - simplify data to reduce size
+                // Get face descriptor for identification
                 const faceDetection = detections[0];
                 const simplifiedData = {
                     detection: {
@@ -368,7 +370,8 @@
                     },
                     landmarks: {
                         positions: faceDetection.landmarks.positions.map(p => ({ x: p.x, y: p.y }))
-                    }
+                    },
+                    descriptor: Array.from(faceDetection.descriptor)
                 };
                 
                 captureStatus.textContent = 'Sending data to server...';
@@ -405,6 +408,11 @@
                     if (result.success) {
                         alert('Face data captured successfully!');
                         closeFaceCaptureModal();
+                        
+                        // If updating existing data, add note about attendance system
+                        if ("{{ $employee->face_data }}" !== "") {
+                            alert('Note: You have updated face data for this employee. If you previously had issues with face recognition, make sure to try the attendance system again with the new face data.');
+                        }
                         
                         // Reload page to show updated data
                         setTimeout(() => {

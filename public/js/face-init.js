@@ -12,7 +12,7 @@ window.faceApiInit = async () => {
     await faceapi.loadFaceLandmarkModel('/models');
     console.log('Face landmark model loaded successfully');
     
-    // Cek apakah menggunakan API style baru atau lama
+    // Always load face recognition model - critical for face comparison
     console.log('Loading face recognition model...');
     try {
       // Coba metode API modern terlebih dahulu (di halaman admin)
@@ -25,12 +25,13 @@ window.faceApiInit = async () => {
         await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
         console.log('Face recognition model loaded successfully (legacy API)');
       }
-      // Jika tidak ada keduanya, lewati saja
+      // Raise error if face recognition model could not be loaded
       else {
-        console.log('Face recognition model not available in this version, skipping');
+        throw new Error('Face recognition model not available in this version');
       }
     } catch (recError) {
-      console.warn('Could not load face recognition model, skipping:', recError);
+      console.error('Could not load face recognition model:', recError);
+      throw recError; // Re-throw to show error was critical
     }
     
     // Coba load model ekspresi wajah

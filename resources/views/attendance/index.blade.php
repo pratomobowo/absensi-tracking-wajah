@@ -292,11 +292,12 @@
             
             try {
                 // Gunakan SSD MobileNet untuk deteksi yang lebih akurat
-                // Tapi jangan gunakan face descriptors karena sering menyebabkan masalah tensor
+                // Add face recognition descriptors to enable proper face comparison
                 const results = await faceapi.detectAllFaces(video,
                     new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
                 )
-                .withFaceLandmarks(); // Hilangkan withFaceDescriptors yang bermasalah
+                .withFaceLandmarks()
+                .withFaceDescriptors(); // Add face descriptors for comparison
                     
                 const ctx = overlay.getContext('2d');
                 ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -307,10 +308,10 @@
                     
                     // Gambar hasil deteksi
                     faceapi.draw.drawDetections(overlay, results);
-                    faceapi.draw.drawFaceLandmarks(overlay, results); // Tambahkan landmark visualization
+                    faceapi.draw.drawFaceLandmarks(overlay, results);
                         
-                    // Simulasi identifikasi untuk development
-                    identifyEmployeeSimple();
+                    // Use proper face identification instead of just selecting the first employee
+                    identifyEmployee(results[0].descriptor);
                 } else {
                     faceStatus.textContent = 'No face detected';
                     faceStatus.className = 'absolute bottom-2 left-2 bg-gray-800 bg-opacity-75 text-white px-2 py-1 rounded text-sm';
@@ -326,8 +327,8 @@
         }, 500);
     }
     
-    // Simplified identification for development
-    function identifyEmployeeSimple() {
+    // Proper face identification comparing face descriptors
+    function identifyEmployee(faceDescriptor) {
         if (employeesData.length === 0) {
             console.log('No employee data available for face recognition');
             faceStatus.textContent = 'No employee data available. Use manual entry.';
@@ -338,30 +339,101 @@
             return;
         }
         
-        // Dalam pengembangan, cukup gunakan karyawan pertama dari API
-        recognizedEmployee = employeesData[0];
+        let bestMatch = null;
+        let bestMatchDistance = Infinity;
+        const MATCH_THRESHOLD = 0.6; // Lower value means stricter matching (0.6 is a good value)
         
-        // Tampilkan hasil pengenalan
-        recognitionStatus.innerHTML = `
-            <div class="flex items-center mb-2">
-                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
+        // Compare current face with all employees' stored face data
+        for (const employee of employeesData) {
+            try {
+                // Skip if no face data available
+                if (!employee.face_data) continue;
+                
+                // Parse employee face data
+                const employeeFaceData = JSON.parse(employee.face_data);
+                
+                // Check if we have a proper descriptor or if we need to get it from raw data
+                if (employeeFaceData.descriptor) {
+                    // If we have a saved descriptor as Float32Array or array
+                    const storedDescriptor = new Float32Array(employeeFaceData.descriptor);
+                    
+                    // Calculate Euclidean distance between face descriptors
+                    // Lower distance means more similar faces
+                    const distance = faceapi.euclideanDistance(faceDescriptor, storedDescriptor);
+                    
+                    console.log(`Distance for ${employee.name}: ${distance}`);
+                    
+                    // Update best match if this is closer
+                    if (distance < bestMatchDistance) {
+                        bestMatchDistance = distance;
+                        bestMatch = employee;
+                    }
+                } 
+                // For backward compatibility with older stored face data
+                else if (employeeFaceData.detection) {
+                    console.log(`Employee ${employee.name} has face data but no descriptor`);
+                }
+            } catch (error) {
+                console.error(`Error comparing with employee ${employee.name}:`, error);
+            }
+        }
+        
+        // Check if the best match is good enough (below threshold)
+        if (bestMatch && bestMatchDistance < MATCH_THRESHOLD) {
+            console.log(`Recognized employee: ${bestMatch.name} with distance: ${bestMatchDistance}`);
+            recognizedEmployee = bestMatch;
+            
+            // Display recognition result
+            recognitionStatus.innerHTML = `
+                <div class="flex items-center mb-2">
+                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-lg font-medium text-gray-900">Recognized: ${recognizedEmployee.name}</div>
+                        <div class="text-sm text-gray-500">Employee ID: ${recognizedEmployee.employee_id}</div>
+                        <div class="text-xs text-gray-400">Match confidence: ${((1 - bestMatchDistance) * 100).toFixed(1)}%</div>
+                    </div>
                 </div>
-                <div class="ml-4">
-                    <div class="text-lg font-medium text-gray-900">Recognized: ${recognizedEmployee.name}</div>
-                    <div class="text-sm text-gray-500">Employee ID: ${recognizedEmployee.employee_id}</div>
+            `;
+            
+            recognitionStatus.classList.remove('hidden');
+            recognitionStatus.classList.add('bg-blue-50', 'border', 'border-blue-200');
+            
+            // Enable attendance buttons
+            clockInBtn.disabled = false;
+            clockOutBtn.disabled = false;
+        } else {
+            console.log(`No matching employee found. Best distance: ${bestMatchDistance}`);
+            recognizedEmployee = null;
+            
+            // Show not recognized message
+            recognitionStatus.innerHTML = `
+                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                Face not recognized. Please try again or use the manual entry option below.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        `;
-        
-        recognitionStatus.classList.remove('hidden');
-        recognitionStatus.classList.add('bg-blue-50', 'border', 'border-blue-200');
-        
-        // Enable attendance buttons
-        clockInBtn.disabled = false;
-        clockOutBtn.disabled = false;
+            `;
+            
+            recognitionStatus.classList.remove('hidden');
+            clockInBtn.disabled = true;
+            clockOutBtn.disabled = true;
+            
+            // Show manual entry as fallback
+            document.getElementById('toggle-manual').click();
+        }
     }
     
     // Capture photo and submit attendance
