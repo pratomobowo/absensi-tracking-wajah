@@ -22,6 +22,11 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{{ route('admin.dashboard.attendance') }}" class="block py-2.5 px-4 rounded transition duration-200 {{ Route::is('admin.dashboard.attendance') || Route::is('admin.dashboard.employee') || Route::is('admin.dashboard.department') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                                <span class="ml-2">Attendance Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="{{ route('admin.employees.index') }}" class="block py-2.5 px-4 rounded transition duration-200 {{ Route::is('admin.employees.*') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
                                 <span class="ml-2">Employees</span>
                             </a>
@@ -113,6 +118,11 @@
                     <li>
                         <a href="{{ route('admin.dashboard') }}" class="block py-2.5 px-4 rounded transition duration-200 {{ Route::is('admin.dashboard') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
                             <span class="ml-2">Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.dashboard.attendance') }}" class="block py-2.5 px-4 rounded transition duration-200 {{ Route::is('admin.dashboard.attendance') || Route::is('admin.dashboard.employee') || Route::is('admin.dashboard.department') ? 'bg-blue-700' : 'hover:bg-blue-700' }}">
+                            <span class="ml-2">Attendance Dashboard</span>
                         </a>
                     </li>
                     <li>
