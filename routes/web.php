@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\AttendanceReportController;
+use App\Http\Controllers\Admin\AttendanceDashboardController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\AdminAuthenticate;
@@ -66,6 +67,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        
+        // Attendance Dashboard
+        Route::prefix('dashboard')->name('dashboard.')->group(function () {
+            Route::get('/attendance', [AttendanceDashboardController::class, 'index'])->name('attendance');
+            Route::get('/employee/{employee}', [AttendanceDashboardController::class, 'employeeDashboard'])->name('employee');
+            Route::get('/department/{department}', [AttendanceDashboardController::class, 'departmentDashboard'])->name('department');
+        });
         
         // Employee management
         Route::resource('employees', EmployeeController::class);

@@ -38,6 +38,7 @@
                         @auth('admin')
                             <div class="hidden md:flex space-x-4">
                                 <a href="{{ route('admin.dashboard') }}" class="hover:text-blue-200 {{ Route::is('admin.dashboard') ? 'text-white font-bold' : 'text-blue-100' }}">Dashboard</a>
+                                <a href="{{ route('admin.dashboard.attendance') }}" class="hover:text-blue-200 {{ Route::is('admin.dashboard.*') ? 'text-white font-bold' : 'text-blue-100' }}">Attendance Dashboard</a>
                                 <a href="{{ route('admin.employees.index') }}" class="hover:text-blue-200 {{ Route::is('admin.employees.*') ? 'text-white font-bold' : 'text-blue-100' }}">Employees</a>
                                 <a href="{{ route('admin.departments.index') }}" class="hover:text-blue-200 {{ Route::is('admin.departments.*') ? 'text-white font-bold' : 'text-blue-100' }}">Departments</a>
                                 <a href="{{ route('admin.reports.daily') }}" class="hover:text-blue-200 {{ Route::is('admin.reports.*') ? 'text-white font-bold' : 'text-blue-100' }}">Reports</a>
